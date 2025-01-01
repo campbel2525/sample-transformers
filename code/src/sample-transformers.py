@@ -55,6 +55,8 @@ MODEL_SAVE_DIR = "/hf_repo/models/myproject/"
 # 今回はlocalに保存しているトークナイザーを指定
 TOKENIZER_NAME = TOKENIZER_SAVE_DIR
 
+LOG_DIR = "logs/"
+
 # Accelerate などで使用されるパラメータ
 config_dict = {
     "train_batch_size": 1,  # 書籍:2
@@ -227,7 +229,9 @@ def setup_logging(project_name, accelerator):
         datefmt="%m/%d/%Y %H:%M:%S",
     )
     # ファイル出力とコンソール出力の例
-    file_handler = logging.FileHandler(f"log/debug_{accelerator.process_index}.log")
+    file_handler = logging.FileHandler(
+        f"{LOG_DIR}/debug_{accelerator.process_index}.log"
+    )
     file_handler.setFormatter(formatter)
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
