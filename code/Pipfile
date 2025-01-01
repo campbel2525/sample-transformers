@@ -1,0 +1,33 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sentence-transformers = "*"
+protobuf = "*"
+tiktoken = "*"
+fugashi = "*"
+sentencepiece = "*"
+unidic-lite = "*"
+safetensors = "*"
+bitsandbytes = "*"
+torch = "*"
+transformers = "*"
+datasets = "*"
+accelerate = "*"
+tqdm = "*"
+requests = "*"
+numpy = "*"
+huggingface-hub = "*"
+
+[dev-packages]
+flake8 = "*"
+mypy = "*"
+black = "*"
+isort = "*"
+debugpy = "*"
+types-tqdm = "*"
+
+[requires]
+python_version = "3.12"
