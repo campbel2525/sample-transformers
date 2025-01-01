@@ -2,9 +2,7 @@
 
 docker から nvidia の gpu を使用する前提です
 
-windows 前提になっていますびので mac を使用する場合や gpu を使用しない場合は適宜変更してください
-
-`docker-compose.yml`を変更します
+windows 前提になっていますびので mac を使用する場合や gpu を使用しない場合は`docker-compose.yml`を適宜変更してください
 
 # 開発環境の作成
 
