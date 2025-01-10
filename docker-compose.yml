@@ -1,0 +1,31 @@
+services:
+  # ---------------------------------
+  # python
+  # ---------------------------------
+  python:
+    restart: "no"
+    tty: true
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all # gpuを使用しない場合はコメントアウト
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility # gpuを使用しない場合はコメントアウト
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    runtime: nvidia # gpuを使用しない場合はコメントアウト
+    ports:
+      - "0.0.0.0:9000:9000" # デバッグ用
+      - "0.0.0.0:8000:8000" # webサーバー
+    volumes:
+      - ./code:/project
+      - huggingface_model:/root/.cache/huggingface/hub # ダウンロードしたモデルの保存
+      # - ./hf_repo:/hf_repo # 学習したモデルの保存ディレクトリ
+    networks:
+      - shared-network
+      - default
+
+volumes:
+  huggingface_model:
+
+networks:
+  shared-network:
+    name: ${PROJECT_NAME}-network
