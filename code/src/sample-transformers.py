@@ -39,10 +39,10 @@ BASE_VOCAB = bytes_to_unicode()
 PROJECT_NAME = "myproject1"
 
 # トークナイザーの保存先(local)
-TOKENIZER_SAVE_DIR = f"hf_repo/tokenizers/{PROJECT_NAME}/"
+TOKENIZER_SAVE_DIR = f"model_repo/tokenizers/{PROJECT_NAME}/"
 
 # モデルの保存先(local)
-MODEL_SAVE_DIR = f"hf_repo/models/{PROJECT_NAME}/"
+MODEL_SAVE_DIR = f"model_repo/models/{PROJECT_NAME}/"
 
 # トークナイザー名
 # hugging faceのトークナイザーを指定することも可能
