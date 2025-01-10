@@ -36,7 +36,7 @@ MODEL_NAME = "gpt2"
 BASE_VOCAB = bytes_to_unicode()
 
 # プロジェクト名
-PROJECT_NAME = "myproject"
+PROJECT_NAME = "myproject1"
 
 # トークナイザーの保存先(local)
 TOKENIZER_SAVE_DIR = f"hf_repo/tokenizers/{PROJECT_NAME}/"
@@ -83,12 +83,12 @@ def train_tokenizer():
     iter_dataset = iter(dataset)
 
     def batch_iterator_larger(batch_size=10):
-        for _ in tqdm(range(0, config_dict.train_length, batch_size)):
+        for _ in tqdm(range(0, args.train_length, batch_size)):
             yield [next(iter_dataset)["content"] for _ in range(batch_size)]
 
     new_tokenizer = tokenizer.train_new_from_iterator(
         batch_iterator_larger(),
-        vocab_size=config_dict.vocab_size_large,
+        vocab_size=args.vocab_size_large,
         initial_alphabet=BASE_VOCAB,
     )
 
@@ -418,12 +418,12 @@ if __name__ == "__main__":
     # from config.debug import *
 
     # 1. トークナイザーの学習＆保存
-    # new_tokenizer = train_tokenizer()
+    new_tokenizer = train_tokenizer()
 
     # 2. モデルの学習＆保存
 
     # プリトレーニング済みモデルを初期化してロードする
-    # train_model1()
+    train_model1()
 
     # プリトレーニング済みモデルをロードする
-    train_model2()
+    # train_model2()
