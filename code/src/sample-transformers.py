@@ -418,7 +418,7 @@ if __name__ == "__main__":
     # from config.debug import *
 
     # 1. トークナイザーの学習＆保存
-    new_tokenizer = train_tokenizer()
+    # new_tokenizer = train_tokenizer()
 
     # 2. モデルの学習＆保存
 
