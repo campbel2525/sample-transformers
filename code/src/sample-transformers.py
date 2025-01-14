@@ -20,7 +20,7 @@ from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
 # =====================================================================
 # pcのスペックが足りなく実行できない場合は下記の値を小さくして対応
 # - config_dict
-#   - train_length
+#   - train_dataset_size
 #   - train_batch_size
 #   - valid_batch_size
 #   - seq_length
@@ -54,7 +54,7 @@ LOG_DIR = "logs/"
 # Accelerate などで使用されるパラメータ
 config_dict = {
     "vocab_size_large": 12500,  # 語彙サイズ
-    "train_length": 100000,  # 学習データの長さ 書籍: 100000 or 200000
+    "train_dataset_size": 100000,  # 学習データの長さ 書籍: 100000 or 200000
     "train_batch_size": 2,  # 書籍:2
     "valid_batch_size": 2,  # 書籍:2
     "weight_decay": 0.1,  # 書籍:0.1
@@ -63,11 +63,11 @@ config_dict = {
     "lr_scheduler_type": "cosine",  # 書籍: cosine
     "num_warmup_steps": 750,  # 書籍: 750
     "gradient_accumulation_steps": 16,  # 書籍: 16
-    "max_train_steps": 50000,  # 書籍: 50000
-    "max_eval_steps": -1,  # 書籍: -1 -1: すべて
+    "max_train_steps": 10,  # 書籍: 50000
+    "max_eval_steps": 10,  # 書籍: -1 -1: すべて
     "seq_length": 1024,  # 書籍: 1024
     "seed": 1,  # 書籍: 1
-    "save_checkpoint_steps": 50000,  # 書籍: 50000
+    "save_checkpoint_steps": 10,  # 書籍: 50000
 }
 args = Namespace(**config_dict)
 
@@ -83,7 +83,7 @@ def train_tokenizer():
     iter_dataset = iter(dataset)
 
     def batch_iterator_larger(batch_size=10):
-        for _ in tqdm(range(0, args.train_length, batch_size)):
+        for _ in tqdm(range(0, args.train_dataset_size, batch_size)):
             yield [next(iter_dataset)["content"] for _ in range(batch_size)]
 
     new_tokenizer = tokenizer.train_new_from_iterator(
@@ -223,11 +223,6 @@ def get_grouped_params(model, no_decay=["bias", "LayerNorm.weight"]):
 def evaluate_model(model, eval_dataloader, accelerator):
     model.eval()
     losses = []
-
-    l = len(eval_dataloader)
-    print(l)
-
-    exit()
 
     for step, batch in enumerate(eval_dataloader):
 
