@@ -64,7 +64,7 @@ config_dict = {
     "num_warmup_steps": 750,  # 書籍: 750
     "gradient_accumulation_steps": 16,  # 書籍: 16
     "max_train_steps": 50000,  # 書籍: 50000
-    "max_eval_steps": -10000,  # 書籍: -1 -1: すべて
+    "max_eval_steps": -1,  # 書籍: -1 -1: すべて
     "seq_length": 1024,  # 書籍: 1024
     "seed": 1,  # 書籍: 1
     "save_checkpoint_steps": 50000,  # 書籍: 50000
@@ -418,7 +418,7 @@ if __name__ == "__main__":
     # from config.debug import *
 
     # 1. トークナイザーの学習＆保存
-    new_tokenizer = train_tokenizer()
+    # new_tokenizer = train_tokenizer()
 
     # 2. モデルの学習＆保存
 
