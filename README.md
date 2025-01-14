@@ -29,7 +29,7 @@ pipenv run python src/train_ai.py
 
 - code
   - プログラム配置
-- code/hf_repo/models
+- code/model_repo/models
   - 学習したモデルを保存
-- code/hf_repo/tokenizers
+- code/model_repo/tokenizers
   - 学習したトークナイザーの配置

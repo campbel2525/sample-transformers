@@ -2,31 +2,32 @@ include .env.docker
 pn := $(PROJECT_NAME)
 user_name := $(USER_NAME)
 user_group := $(USER_GROUP)
+pf := $(COMPOSE_FILE)
 
 init: ## 開発環境作成
 	make chown
 	rm -rf code/.venv
 	make destroy
-	docker compose -p $(pn) build --no-cache
-	docker compose -p $(pn) down --volumes
-	docker compose -p $(pn) up -d
-	docker compose -p $(pn) exec -it python pipenv install --dev
+	docker compose -f $(pf) -p $(pn) build --no-cache
+	docker compose -f $(pf) -p $(pn) down --volumes
+	docker compose -f $(pf) -p $(pn) up -d
+	docker compose -f $(pf) -p $(pn) exec -it python pipenv install --dev
 	make chown
 
 up: ## 開発環境立ち上げ
-	docker compose -p $(pn) up -d
+	docker compose -f $(pf) -p $(pn) up -d
 
 down: ## 開発環境down
-	docker compose -p $(pn) down
+	docker compose -f $(pf) -p $(pn) down
 
 shell: ## dockerのshellに入る
-	docker compose -p $(pn) exec python bash
+	docker compose -f $(pf) -p $(pn) exec python bash
 
 check: ## コードのフォーマット
-	docker compose -p $(pn) exec -it python pipenv run isort .
-	docker compose -p $(pn) exec -it python pipenv run black .
-	docker compose -p $(pn) exec -it python pipenv run flake8 .
-	docker compose -p $(pn) exec -it python pipenv run mypy .
+	docker compose -f $(pf) -p $(pn) exec -it python pipenv run isort .
+	docker compose -f $(pf) -p $(pn) exec -it python pipenv run black .
+	docker compose -f $(pf) -p $(pn) exec -it python pipenv run flake8 .
+	docker compose -f $(pf) -p $(pn) exec -it python pipenv run mypy .
 	make chown
 
 destroy: ## 開発環境削除
