@@ -184,7 +184,10 @@ class ConstantLengthDataset(IterableDataset):
 
 
 def create_dataloaders(tokenizer):
-    from datasets import load_dataset
+    """
+    目的: 学習用/検証用データを読み込み、トークナイズ & 定長に切り出し、PyTorch の DataLoader にして返す。
+    流れ: load_dataset → シャッフル → ConstantLengthDataset → DataLoader 生成 → return。
+    """
 
     train_data = load_dataset(
         TRAIN_DATASET_NAME + "-train", split="train", streaming=True
@@ -208,6 +211,11 @@ def create_dataloaders(tokenizer):
 
 
 def get_grouped_params(model, no_decay=["bias", "LayerNorm.weight"]):
+    """
+    目的: モデルのパラメータを「weight decay あり」と「weight decay なし」に仕分ける。
+    流れ: named_parameters() → パラメータ名で仕分け → 2 つのグループを作成して返す。
+    なぜ: Transformer 系では LayerNorm や bias などに weight decay をかけない慣習があり、最適化を微調整するため。
+    """
     params_with_wd, params_without_wd = [], []
     for n, p in model.named_parameters():
         if any(nd in n for nd in no_decay):
@@ -221,6 +229,11 @@ def get_grouped_params(model, no_decay=["bias", "LayerNorm.weight"]):
 
 
 def evaluate_model(model, eval_dataloader, accelerator):
+    """
+    目的: 検証データを使ってモデルの損失・パープレキシティを計算し、評価する。
+    流れ: eval mode → eval_dataloader ループ → forward 計算 (no_grad) → 損失を収集 → 平均 loss & perplexity を算出。
+    ポイント: accelerator.gather による分散学習向け損失集計、最大ステップ制限の有無、計算結果を返す。
+    """
     model.eval()
     losses = []
 
@@ -245,7 +258,7 @@ def evaluate_model(model, eval_dataloader, accelerator):
 
 def setup_logging(project_name, accelerator):
     """
-    Python の logger だけを使用してロギングを行うセットアップ。
+    Python の logger だけを使用してロギングを行うためのセットアップ。
     """
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -288,7 +301,10 @@ def log_metrics(step, metrics, logger, accelerator):
     logger.info(f"Step {step} | " + " | ".join(f"{k}: {v}" for k, v in metrics.items()))
 
 
-def train_model1():
+def execute_train_model1():
+    """
+    モデルをリセットして学習する。
+    """
 
     # モデルの初期化
     model, tokenizer = init_model1(
@@ -297,10 +313,13 @@ def train_model1():
     )
 
     # モデルの学習
-    _train_model(model, tokenizer)
+    train_model(model, tokenizer)
 
 
-def train_model2():
+def execute_train_model2():
+    """
+    モデルを追加で学習する。
+    """
 
     # モデルの初期化
     model, tokenizer = init_model2(
@@ -309,10 +328,10 @@ def train_model2():
     )
 
     # モデルの学習
-    _train_model(model, tokenizer)
+    train_model(model, tokenizer)
 
 
-def _train_model(model, tokenizer):
+def train_model(model, tokenizer):
     accelerator = Accelerator()
     samples_per_step = accelerator.state.num_processes * args.train_batch_size
 
@@ -387,7 +406,7 @@ def _train_model(model, tokenizer):
 
 def log_and_save(logger, model, eval_dataloader, accelerator, step):
     """
-    チェックポイントを保存する関数。
+    ログ出力、保存する関数。
     """
     # 評価
     eval_loss, perplexity = evaluate_model(model, eval_dataloader, accelerator)
@@ -418,7 +437,7 @@ if __name__ == "__main__":
     # 2. モデルの学習＆保存
 
     # プリトレーニング済みモデルを初期化してロードする
-    train_model1()
+    execute_train_model1()
 
     # プリトレーニング済みモデルをロードする
-    # train_model2()
+    # execute_train_model2()
