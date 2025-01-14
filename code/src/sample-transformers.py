@@ -49,25 +49,41 @@ MODEL_SAVE_DIR = f"model_repo/models/{PROJECT_NAME}/"
 # 今回はlocalに保存しているトークナイザーを指定
 TOKENIZER_NAME = TOKENIZER_SAVE_DIR
 
+# ログの保存先
 LOG_DIR = "logs/"
 
 # Accelerate などで使用されるパラメータ
 config_dict = {
-    "vocab_size_large": 12500,  # 語彙サイズ
-    "train_dataset_size": 100000,  # 学習データの長さ 書籍: 100000 or 200000
-    "train_batch_size": 2,  # 書籍:2
-    "valid_batch_size": 2,  # 書籍:2
-    "weight_decay": 0.1,  # 書籍:0.1
-    "shuffle_buffer": 1000,  # 書籍:1000
-    "learning_rate": 2e-4,  # 書籍: 2e-4
-    "lr_scheduler_type": "cosine",  # 書籍: cosine
-    "num_warmup_steps": 750,  # 書籍: 750
-    "gradient_accumulation_steps": 16,  # 書籍: 16
-    "max_train_steps": 10,  # 書籍: 50000
-    "max_eval_steps": 10,  # 書籍: -1 -1: すべて
-    "seq_length": 1024,  # 書籍: 1024
-    "seed": 1,  # 書籍: 1
-    "save_checkpoint_steps": 10,  # 書籍: 50000
+    # 語彙サイズ(書籍: 12500)
+    "vocab_size_large": 12500,
+    # 学習データの長さ(書籍: 100000 or 200000)
+    "train_dataset_size": 100000,
+    # 学習時のバッチサイズ(書籍:2)
+    "train_batch_size": 2,
+    # 検証時のバッチサイズ(書籍:2)
+    "valid_batch_size": 2,
+    # Weight Decay（ウェイト減衰、L2 正則化）の係数(書籍:0.1)
+    "weight_decay": 0.1,
+    # ストリーミングデータセットのシャッフル時に使用するバッファサイズ(書籍:1000)
+    "shuffle_buffer": 1000,
+    # 学習率(書籍: 2e-4)
+    "learning_rate": 2e-4,
+    # 学習率を徐々に変動させるスケジューラの種類(書籍: cosine)
+    "lr_scheduler_type": "cosine",
+    # ウォームアップステップ数(書籍: 750)
+    "num_warmup_steps": 750,
+    # 勾配の累積ステップ数(書籍: 16)
+    "gradient_accumulation_steps": 16,
+    # 学習の最大ステップ数(書籍: 50000)
+    "max_train_steps": 100,
+    # 検証の際の最大ステップ数(書籍: -1 -1: すべて)
+    "max_eval_steps": 10,
+    # 入力シーケンスの最大長(書籍: 1024)
+    "seq_length": 1024,
+    # 乱数シードを固定するためのシード値(書籍: 1)
+    "seed": 1,
+    # チェックポイントを保存するステップ間隔(書籍: 50000)
+    "save_checkpoint_steps": 100,
 }
 args = Namespace(**config_dict)
 
@@ -97,42 +113,6 @@ def train_tokenizer():
     new_tokenizer.save_pretrained(TOKENIZER_SAVE_DIR)
 
     return new_tokenizer
-
-
-# =====================================================================
-# モデルの初期化
-# =====================================================================
-def init_model1(tokenizer_name: str, model_name: str):
-    """
-    プリトレーニング済みモデルを初期化してロードする
-    """
-    # 語彙サイズを合わせて初期化
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    # tokenizer.model_max_length = 99999  # もしくは 1e30, 32768 など、十分大きい値
-    config = AutoConfig.from_pretrained(model_name, vocab_size=len(tokenizer))
-    model = AutoModelForCausalLM.from_config(config)
-
-    return model, tokenizer
-
-
-def init_model2(tokenizer_name: str, model_name: str):
-    """
-    プリトレーニング済みモデルをロードする
-    """
-    tokenizer = AutoTokenizer.from_pretrained(
-        tokenizer_name,
-    )
-
-    # プリトレーニング済みGPT-2をロード（トークナイザと同じvocab_sizeならconfig上書き不要）
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        device_map="auto",
-    )
-
-    # トークナイザに独自トークンを追加しているなら
-    # model.resize_token_embeddings(len(tokenizer))
-
-    return model, tokenizer
 
 
 # =====================================================================
@@ -301,36 +281,6 @@ def log_metrics(step, metrics, logger, accelerator):
     logger.info(f"Step {step} | " + " | ".join(f"{k}: {v}" for k, v in metrics.items()))
 
 
-def execute_train_model1():
-    """
-    モデルをリセットして学習する。
-    """
-
-    # モデルの初期化
-    model, tokenizer = init_model1(
-        tokenizer_name=TOKENIZER_NAME,
-        model_name=MODEL_NAME,
-    )
-
-    # モデルの学習
-    train_model(model, tokenizer)
-
-
-def execute_train_model2():
-    """
-    モデルを追加で学習する。
-    """
-
-    # モデルの初期化
-    model, tokenizer = init_model2(
-        tokenizer_name=TOKENIZER_NAME,
-        model_name=MODEL_NAME,
-    )
-
-    # モデルの学習
-    train_model(model, tokenizer)
-
-
 def train_model(model, tokenizer):
     accelerator = Accelerator()
     samples_per_step = accelerator.state.num_processes * args.train_batch_size
@@ -425,6 +375,75 @@ def log_and_save(logger, model, eval_dataloader, accelerator, step):
         ckpt_dir = f"{MODEL_SAVE_DIR}model_checkpoint_step_{step}"
         os.makedirs(ckpt_dir, exist_ok=True)
         unwrapped_model.save_pretrained(ckpt_dir)
+
+
+# =====================================================================
+# モデルの初期化
+# =====================================================================
+def init_model1(tokenizer_name: str, model_name: str):
+    """
+    プリトレーニング済みモデルを初期化してロードする
+    """
+    # 語彙サイズを合わせて初期化
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    # tokenizer.model_max_length = 99999  # もしくは 1e30, 32768 など、十分大きい値
+    config = AutoConfig.from_pretrained(model_name, vocab_size=len(tokenizer))
+    model = AutoModelForCausalLM.from_config(config)
+
+    return model, tokenizer
+
+
+def init_model2(tokenizer_name: str, model_name: str):
+    """
+    プリトレーニング済みモデルをロードする
+    """
+    tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer_name,
+    )
+
+    # プリトレーニング済みGPT-2をロード（トークナイザと同じvocab_sizeならconfig上書き不要）
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        device_map="auto",
+    )
+
+    # トークナイザに独自トークンを追加しているなら
+    # model.resize_token_embeddings(len(tokenizer))
+
+    return model, tokenizer
+
+
+# =====================================================================
+# モデルの学習実行
+# =====================================================================
+def execute_train_model1():
+    """
+    モデルをリセットして学習する。
+    """
+
+    # モデルの初期化
+    model, tokenizer = init_model1(
+        tokenizer_name=TOKENIZER_NAME,
+        model_name=MODEL_NAME,
+    )
+
+    # モデルの学習
+    train_model(model, tokenizer)
+
+
+def execute_train_model2():
+    """
+    モデルを追加で学習する。
+    """
+
+    # モデルの初期化
+    model, tokenizer = init_model2(
+        tokenizer_name=TOKENIZER_NAME,
+        model_name=MODEL_NAME,
+    )
+
+    # モデルの学習
+    train_model(model, tokenizer)
 
 
 if __name__ == "__main__":
