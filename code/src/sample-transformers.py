@@ -446,6 +446,47 @@ def execute_train_model2():
     train_model(model, tokenizer)
 
 
+# =====================================================================
+# モデルの実行
+# =====================================================================
+def execute_model(
+    prompt: str,
+    tokenizer_name: str = TOKENIZER_NAME,
+    model_name: str = MODEL_NAME,
+):
+    """
+    モデルの実行
+    """
+    # 1) トークナイザーをローカルから読み込み
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
+    # 2) モデル本体をローカルから読み込み
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+
+    # 3) 推論時に必要ならデバイス指定（GPUがある場合）
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    # 4) トークン化
+    inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
+
+    # 5) 推論（例: テキスト生成）
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs,
+            max_length=50,
+            num_return_sequences=1,
+            do_sample=True,
+            top_p=0.9,
+            top_k=50,
+        )
+
+    # 7) 出力結果のデコード
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    print(generated_text)
+
+
 if __name__ == "__main__":
     # デバッグ
     # from config.debug import *
@@ -456,7 +497,14 @@ if __name__ == "__main__":
     # 2. モデルの学習＆保存
 
     # プリトレーニング済みモデルを初期化してロードする
-    execute_train_model1()
+    # execute_train_model1()
 
     # プリトレーニング済みモデルをロードする
     # execute_train_model2()
+
+    # 学習したモデルの実行
+    execute_model(
+        prompt="AI: import logging",
+        tokenizer_name=TOKENIZER_NAME,
+        model_name=MODEL_NAME,
+    )
