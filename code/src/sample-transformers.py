@@ -44,6 +44,12 @@ TOKENIZER_SAVE_DIR = f"model_repo/tokenizers/{PROJECT_NAME}/"
 # モデルの保存先(local)
 MODEL_SAVE_DIR = f"model_repo/models/{PROJECT_NAME}/"
 
+# モデルの実行する際に使用するトークナイザー
+EXECUTE_TOKENIZER_DIR = TOKENIZER_SAVE_DIR
+
+# モデルの実行する際に使用するモデル名
+EXECUTE_MODEL_DIR = f"{MODEL_SAVE_DIR}model_checkpoint_step_160/"
+
 # トークナイザー名
 # hugging faceのトークナイザーを指定することも可能
 # 今回はlocalに保存しているトークナイザーを指定
@@ -75,7 +81,7 @@ config_dict = {
     # 勾配の累積ステップ数(書籍: 16)
     "gradient_accumulation_steps": 16,
     # 学習の最大ステップ数(書籍: 50000)
-    "max_train_steps": 100,
+    "max_train_steps": 10,
     # 検証の際の最大ステップ数(書籍: -1 -1: すべて)
     "max_eval_steps": 10,
     # 入力シーケンスの最大長(書籍: 1024)
@@ -83,7 +89,7 @@ config_dict = {
     # 乱数シードを固定するためのシード値(書籍: 1)
     "seed": 1,
     # チェックポイントを保存するステップ間隔(書籍: 50000)
-    "save_checkpoint_steps": 100,
+    "save_checkpoint_steps": 10,
 }
 args = Namespace(**config_dict)
 
@@ -504,7 +510,7 @@ if __name__ == "__main__":
 
     # 学習したモデルの実行
     execute_model(
-        prompt="AI: import logging",
-        tokenizer_name=TOKENIZER_NAME,
-        model_name=MODEL_NAME,
+        prompt="def main()",
+        tokenizer_name=EXECUTE_TOKENIZER_DIR,
+        model_name=EXECUTE_MODEL_DIR,
     )
