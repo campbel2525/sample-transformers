@@ -69,6 +69,8 @@ LOG_DIR = "logs/"
 
 # Accelerate などで使用されるパラメータ
 config_dict = {
+    # トレーニングに使用するデータセットが train のみかどうか
+    "is_train_only_dataset": False,
     # データセットのカラム(書籍: "content")
     "dataset_use_column": "text",
     # 語彙サイズ(書籍: 12500)
@@ -182,32 +184,32 @@ class ConstantLengthDataset(IterableDataset):
                     yield torch.tensor(input_ids)
 
 
-# def create_dataloaders(tokenizer):
-#     """
-#     データセットにtrainとvalidがあるもの
-#     目的: 学習用/検証用データを読み込み、トークナイズ & 定長に切り出し、PyTorch の DataLoader にして返す。
-#     流れ: load_dataset → シャッフル → ConstantLengthDataset → DataLoader 生成 → return。
-#     """
-
-#     # トレーニング用データセット
-#     train_data = load_dataset(TRAIN_DATASET_NAME, split="train", streaming=True)
-#     train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
-#     train_dataset = ConstantLengthDataset(
-#         tokenizer, train_data, seq_length=args.seq_length
-#     )
-#     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
-
-#     # 検証用データセット
-#     valid_data = load_dataset(VALID_DATASET_NAME, split="validation", streaming=True)
-#     valid_dataset = ConstantLengthDataset(
-#         tokenizer, valid_data, seq_length=args.seq_length
-#     )
-#     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
-
-#     return train_dataloader, eval_dataloader
-
-
 def create_dataloaders(tokenizer):
+    """
+    データセットにtrainとvalidがあるもの
+    目的: 学習用/検証用データを読み込み、トークナイズ & 定長に切り出し、PyTorch の DataLoader にして返す。
+    流れ: load_dataset → シャッフル → ConstantLengthDataset → DataLoader 生成 → return。
+    """
+
+    # トレーニング用データセット
+    train_data = load_dataset(TRAIN_DATASET_NAME, split="train", streaming=True)
+    train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
+    train_dataset = ConstantLengthDataset(
+        tokenizer, train_data, seq_length=args.seq_length
+    )
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+
+    # 検証用データセット
+    valid_data = load_dataset(VALID_DATASET_NAME, split="validation", streaming=True)
+    valid_dataset = ConstantLengthDataset(
+        tokenizer, valid_data, seq_length=args.seq_length
+    )
+    eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+
+    return train_dataloader, eval_dataloader
+
+
+def create_only_train_dataloaders(tokenizer):
     """
     データセットにtrainのみの場合
 
@@ -331,7 +333,7 @@ def log_metrics(step, metrics, logger, accelerator):
     logger.info(f"Step {step} | " + " | ".join(f"{k}: {v}" for k, v in metrics.items()))
 
 
-def train_model(model, tokenizer):
+def train_model(model, tokenizer, is_train_only_dataset=False):
     accelerator = Accelerator()
     samples_per_step = accelerator.state.num_processes * args.train_batch_size
 
@@ -340,7 +342,11 @@ def train_model(model, tokenizer):
     logger.info(accelerator.state)
 
     # データローダー作成
-    train_dataloader, eval_dataloader = create_dataloaders(tokenizer)
+    if not is_train_only_dataset:
+        train_dataloader, eval_dataloader = create_dataloaders(tokenizer)
+
+    else:
+        train_dataloader, eval_dataloader = create_only_train_dataloaders(tokenizer)
 
     # Optimizer & Scheduler
     optimizer = AdamW(get_grouped_params(model), lr=args.learning_rate)
@@ -466,7 +472,7 @@ def init_model2(tokenizer_name: str, model_name: str):
 # =====================================================================
 # モデルの学習実行
 # =====================================================================
-def execute_train_model1():
+def execute_train_model1(is_train_only_dataset: bool = False):
     """
     モデルをリセットして学習する。
     """
@@ -475,13 +481,14 @@ def execute_train_model1():
     model, tokenizer = init_model1(
         tokenizer_name=TOKENIZER_NAME,
         model_name=MODEL_NAME,
+        is_train_only_dataset=is_train_only_dataset,
     )
 
     # モデルの学習
     train_model(model, tokenizer)
 
 
-def execute_train_model2():
+def execute_train_model2(is_train_only_dataset: bool = False):
     """
     モデルを追加で学習する。
     """
@@ -490,6 +497,7 @@ def execute_train_model2():
     model, tokenizer = init_model2(
         tokenizer_name=TOKENIZER_NAME,
         model_name=MODEL_NAME,
+        is_train_only_dataset=is_train_only_dataset,
     )
 
     # モデルの学習
@@ -588,10 +596,10 @@ if __name__ == "__main__":
 
     # 2. モデルの学習＆保存
     # プリトレーニング済みモデルを初期化してロードする
-    # execute_train_model1()
+    # execute_train_model1(args.config_dict)
 
     # プリトレーニング済みモデルをロードする
-    # execute_train_model2()
+    # execute_train_model2(args.config_dict)
 
     # 学習したモデルの実行
     # 推論を行う
