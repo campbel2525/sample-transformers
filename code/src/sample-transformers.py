@@ -25,9 +25,18 @@ from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
 #   - valid_batch_size
 #   - seq_length
 
-# データセット名(書籍: transformersbook/codeparrot)
-# 書籍で用意されているデータセット名を使用する
+# データセットの選定には下記が存在しているのを使用するとstreamingができていい
+# - train
+# - validation
+
+# トーク内座０データセット名(書籍: transformersbook/codeparrot)
+TOKENIZER_DATASET_NAME = "llm-book/aio-passages-bpr-bert-base-japanese-v3"
+
+# トレーニング用データセット名(書籍: transformersbook/codeparrot-train)
 TRAIN_DATASET_NAME = "llm-book/aio-passages-bpr-bert-base-japanese-v3"
+
+# 検証用データセット(書籍: transformersbook/codeparrot-valid)
+VALID_DATASET_NAME = "llm-book/aio-passages-bpr-bert-base-japanese-v3"
 
 # 学習に使用するモデル名
 MODEL_NAME = "gpt2"
@@ -48,7 +57,7 @@ MODEL_SAVE_DIR = f"model_repo/models/{PROJECT_NAME}/"
 EXECUTE_TOKENIZER_DIR = TOKENIZER_SAVE_DIR
 
 # モデルの実行する際に使用するモデル名
-EXECUTE_MODEL_DIR = f"{MODEL_SAVE_DIR}model_checkpoint_step_160/"
+EXECUTE_MODEL_DIR = f"{MODEL_SAVE_DIR}model_checkpoint_step_50/"
 
 # トークナイザー名
 # hugging faceのトークナイザーを指定することも可能
@@ -103,7 +112,7 @@ def train_tokenizer():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
     # ストリーミングデータセットを用いて学習
-    dataset = load_dataset(TRAIN_DATASET_NAME, split="train", streaming=True)
+    dataset = load_dataset(TOKENIZER_DATASET_NAME, split="train", streaming=True)
     iter_dataset = iter(dataset)
 
     def batch_iterator_larger(batch_size=10):
@@ -173,30 +182,61 @@ class ConstantLengthDataset(IterableDataset):
                     yield torch.tensor(input_ids)
 
 
+# def create_dataloaders(tokenizer):
+#     """
+#     データセットにtrainとvalidがあるもの
+#     目的: 学習用/検証用データを読み込み、トークナイズ & 定長に切り出し、PyTorch の DataLoader にして返す。
+#     流れ: load_dataset → シャッフル → ConstantLengthDataset → DataLoader 生成 → return。
+#     """
+
+#     # トレーニング用データセット
+#     train_data = load_dataset(TRAIN_DATASET_NAME, split="train", streaming=True)
+#     train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
+#     train_dataset = ConstantLengthDataset(
+#         tokenizer, train_data, seq_length=args.seq_length
+#     )
+#     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+
+#     # 検証用データセット
+#     valid_data = load_dataset(VALID_DATASET_NAME, split="validation", streaming=True)
+#     valid_dataset = ConstantLengthDataset(
+#         tokenizer, valid_data, seq_length=args.seq_length
+#     )
+#     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+
+#     return train_dataloader, eval_dataloader
+
+
 def create_dataloaders(tokenizer):
     """
+    データセットにtrainのみの場合
+
     目的: 学習用/検証用データを読み込み、トークナイズ & 定長に切り出し、PyTorch の DataLoader にして返す。
     流れ: load_dataset → シャッフル → ConstantLengthDataset → DataLoader 生成 → return。
+
+    trainラベルを持つデータセットを読み込んで、トレーニング用90%、学習用10%に分割する
     """
 
-    train_data = load_dataset(
-        TRAIN_DATASET_NAME + "-train", split="train", streaming=True
-    )
-    train_data = train_data.shuffle(buffer_size=args.shuffle_buffer, seed=args.seed)
+    # 1. 非ストリーミングでデータをロード
+    dataset = load_dataset(TRAIN_DATASET_NAME, split="train")
 
-    valid_data = load_dataset(
-        TRAIN_DATASET_NAME + "-valid", split="validation", streaming=True
-    )
+    # 2. シャッフル＆分割 (9:1)
+    dataset = dataset.shuffle(seed=args.seed)
+    splitted = dataset.train_test_split(test_size=0.1, seed=args.seed)
+    train_data = splitted["train"]
+    valid_data = splitted["test"]  # ここでは "test" だけど検証用扱い
 
+    # 3. ConstantLengthDatasetの作成
     train_dataset = ConstantLengthDataset(
         tokenizer, train_data, seq_length=args.seq_length
     )
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
+
     valid_dataset = ConstantLengthDataset(
         tokenizer, valid_data, seq_length=args.seq_length
     )
-
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     eval_dataloader = DataLoader(valid_dataset, batch_size=args.valid_batch_size)
+
     return train_dataloader, eval_dataloader
 
 
@@ -459,13 +499,13 @@ def execute_train_model2():
 # =====================================================================
 # モデルの実行
 # =====================================================================
-def execute_model(
+def execute_inference(
     prompt: str,
     tokenizer_name: str = TOKENIZER_NAME,
     model_name: str = MODEL_NAME,
 ):
     """
-    モデルの実行
+    推論
     """
     # 1) トークナイザーをローカルから読み込み
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -493,8 +533,50 @@ def execute_model(
 
     # 7) 出力結果のデコード
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return generated_text
 
-    print(generated_text)
+
+def execute_qa_model(
+    question: str,
+    context: str = "",
+    tokenizer_name: str = EXECUTE_TOKENIZER_DIR,
+    model_name: str = EXECUTE_MODEL_DIR,
+):
+    # 1) トークナイザーとモデルの読み込み
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    # プロンプト例
+    # context（追加情報や文章）がある場合は、プロンプトの中に含める
+    prompt = f"Q: {question}\n"
+    if context:
+        prompt += f"(Context: {context})\n"
+    prompt += "A:"
+
+    # トークン化
+    inputs = tokenizer.encode(prompt, return_tensors="pt").to(device)
+
+    # 生成
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs,
+            max_length=100,
+            num_return_sequences=1,
+            do_sample=True,
+            top_p=0.9,
+            top_k=50,
+        )
+
+    # 出力結果のデコード
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    # "A:" の後ろのテキストだけ抽出する
+    answer = generated_text.split("A:")[-1].strip()
+
+    return answer
 
 
 if __name__ == "__main__":
@@ -502,18 +584,24 @@ if __name__ == "__main__":
     # from config.debug import *
 
     # 1. トークナイザーの学習＆保存
-    new_tokenizer = train_tokenizer()
+    # new_tokenizer = train_tokenizer()
 
     # 2. モデルの学習＆保存
     # プリトレーニング済みモデルを初期化してロードする
     # execute_train_model1()
 
     # プリトレーニング済みモデルをロードする
-    execute_train_model2()
+    # execute_train_model2()
 
     # 学習したモデルの実行
-    execute_model(
-        prompt="def main()",
-        tokenizer_name=EXECUTE_TOKENIZER_DIR,
-        model_name=EXECUTE_MODEL_DIR,
-    )
+    # 推論を行う
+    # result = execute_inference(
+    #     prompt="こんにちは",
+    #     tokenizer_name=EXECUTE_TOKENIZER_DIR,
+    #     model_name=EXECUTE_MODEL_DIR,
+    # )
+    # print(result)
+
+    # 質疑応答を行う
+    result = execute_qa_model("what is bird?")
+    print(result)
