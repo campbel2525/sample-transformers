@@ -25,9 +25,9 @@ from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
 #   - valid_batch_size
 #   - seq_length
 
-# データセット名
+# データセット名(書籍: transformersbook/codeparrot)
 # 書籍で用意されているデータセット名を使用する
-TRAIN_DATASET_NAME = "transformersbook/codeparrot"
+TRAIN_DATASET_NAME = "llm-book/aio-passages-bpr-bert-base-japanese-v3"
 
 # 学習に使用するモデル名
 MODEL_NAME = "gpt2"
@@ -36,7 +36,7 @@ MODEL_NAME = "gpt2"
 BASE_VOCAB = bytes_to_unicode()
 
 # プロジェクト名
-PROJECT_NAME = "myproject1"
+PROJECT_NAME = "myproject2"
 
 # トークナイザーの保存先(local)
 TOKENIZER_SAVE_DIR = f"model_repo/tokenizers/{PROJECT_NAME}/"
@@ -60,6 +60,8 @@ LOG_DIR = "logs/"
 
 # Accelerate などで使用されるパラメータ
 config_dict = {
+    # データセットのカラム(書籍: "content")
+    "dataset_use_column": "text",
     # 語彙サイズ(書籍: 12500)
     "vocab_size_large": 12500,
     # 学習データの長さ(書籍: 100000 or 200000)
@@ -106,7 +108,9 @@ def train_tokenizer():
 
     def batch_iterator_larger(batch_size=10):
         for _ in tqdm(range(0, args.train_dataset_size, batch_size)):
-            yield [next(iter_dataset)["content"] for _ in range(batch_size)]
+            yield [
+                next(iter_dataset)[args.dataset_use_column] for _ in range(batch_size)
+            ]
 
     new_tokenizer = tokenizer.train_new_from_iterator(
         batch_iterator_larger(),
@@ -148,7 +152,7 @@ class ConstantLengthDataset(IterableDataset):
                 if buffer_len >= self.input_characters:
                     break
                 try:
-                    buffer.append(next(iterator)["content"])
+                    buffer.append(next(iterator)[args.dataset_use_column])
                     buffer_len += len(buffer[-1])
                 except StopIteration:
                     # もう一度イテレータを作り直す
@@ -498,15 +502,14 @@ if __name__ == "__main__":
     # from config.debug import *
 
     # 1. トークナイザーの学習＆保存
-    # new_tokenizer = train_tokenizer()
+    new_tokenizer = train_tokenizer()
 
     # 2. モデルの学習＆保存
-
     # プリトレーニング済みモデルを初期化してロードする
     # execute_train_model1()
 
     # プリトレーニング済みモデルをロードする
-    # execute_train_model2()
+    execute_train_model2()
 
     # 学習したモデルの実行
     execute_model(
