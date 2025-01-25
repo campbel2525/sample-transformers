@@ -1,18 +1,5 @@
 from typing import Any, Dict, List
 
-from sentence_transformers import SentenceTransformer
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoModelForSeq2SeqLM,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    pipeline,
-)
-from huggingface_hub import snapshot_download
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-
 
 def _get_model_class(model_name: str, task_name: str):
     """
@@ -26,6 +13,14 @@ def _get_model_class(model_name: str, task_name: str):
 
     だけを行う最小のサンプルです。
     """
+
+    from transformers import (
+        AutoConfig,
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoModelForSequenceClassification,
+    )
+
     # config だけをロードして、model_type を取り出す
     config = AutoConfig.from_pretrained(model_name)
     model_type = config.model_type.lower()
@@ -77,6 +72,11 @@ def summary_sentences(
     """
     要約を行う
     """
+    from transformers import (
+        AutoTokenizer,
+        pipeline,
+    )
+    from transformers import AutoTokenizer
 
     task_name = "summarization"
 
@@ -109,6 +109,8 @@ def embedding_sentences(
     ベクトル化を行う
     """
 
+    from sentence_transformers import SentenceTransformer
+
     # 1. cl-tohoku/bert-base-japanese-whole-word-masking
     # このモデルは全単語マスキングを行ったBERTモデルで、単語レベルでの意味を捉えることができます。
     # したがって、単語の意味が重要なタスク（例えば、文章の意味理解や質問応答など）に適しています。
@@ -130,6 +132,11 @@ def sentiment_sentences(
     """
     感情分析を行う
     """
+    from transformers import (
+        AutoTokenizer,
+        pipeline,
+    )
+    from transformers import AutoTokenizer
 
     task_name = "sentiment-analysis"
 
@@ -154,6 +161,7 @@ def download_model(repo_id: str, local_dir: str):
     """
     huggingface hub からモデルをダウンロードする
     """
+    from huggingface_hub import snapshot_download
 
     snapshot_download(
         repo_id=repo_id,
@@ -166,6 +174,8 @@ def run_model(model_name: str, prompt: str) -> str:
     """
     モデルの実行
     """
+    import torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
