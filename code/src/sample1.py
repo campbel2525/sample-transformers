@@ -1,3 +1,13 @@
+"""
+huggingface hubのモデルについて
+
+- トークナイザーの学習
+- モデルの学習
+- モデルの実行
+
+を行うサンプルコード
+"""
+
 import logging
 import os
 from argparse import Namespace

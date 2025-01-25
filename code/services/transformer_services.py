@@ -9,6 +9,9 @@ from transformers import (
     AutoTokenizer,
     pipeline,
 )
+from huggingface_hub import snapshot_download
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 def _get_model_class(model_name: str, task_name: str):
@@ -145,3 +148,47 @@ def sentiment_sentences(
     # 感情分析の実行
     classifier_results = classifier(sentences)
     return classifier_results
+
+
+def download_model(repo_id: str, local_dir: str):
+    """
+    huggingface hub からモデルをダウンロードする
+    """
+
+    snapshot_download(
+        repo_id=repo_id,
+        local_dir=local_dir,
+        # local_dir_use_symlinks=False,  # 必要に応じて指定
+    )
+
+
+def run_model(model_name: str, prompt: str) -> str:
+    """
+    モデルの実行
+    """
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        trust_remote_code=True,
+        device_map="auto",
+        torch_dtype=torch.float16,
+    )
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    inputs = tokenizer(prompt, return_tensors="pt")
+
+    output_tokens = model.generate(
+        **inputs,
+        max_new_tokens=50,
+        do_sample=True,
+        top_k=50,
+        top_p=0.95,
+        temperature=0.7,
+    )
+
+    generated_text = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
+
+    return generated_text
