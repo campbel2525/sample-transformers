@@ -1,33 +1,18 @@
 [[source]]
 url = "https://pypi.org/simple"
-verify_ssl = true
-name = "pypi"
+verify_ssl = false
+name = "pip_conf_index_global"
 
 [packages]
-sentence-transformers = "*"
-protobuf = "*"
-tiktoken = "*"
-fugashi = "*"
-sentencepiece = "*"
-unidic-lite = "*"
-safetensors = "*"
-bitsandbytes = "*"
-torch = "*"
-transformers = "*"
-accelerate = "*"
-tqdm = "*"
-requests = "*"
-numpy = "*"
+accelerate = "==0.25.0"
+torch = "==2.1.0"
+transformers = "==4.36.2"
+safetensors = "==0.4.0"
+einops = "==0.7.0"
 huggingface-hub = "*"
-datasets = "*"
+numpy = "<2"
 
 [dev-packages]
-flake8 = "*"
-mypy = "*"
-black = "*"
-isort = "*"
-types-tqdm = "*"
-debugpy = "*"
 
 [requires]
-python_version = "3.12"
+python_version = "3.10"

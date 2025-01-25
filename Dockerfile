@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:24.11-py3
+FROM nvcr.io/nvidia/pytorch:24.09-py3
 
 # apt-getのアップデート
 RUN apt-get update && apt-get install -y --no-install-recommends \
