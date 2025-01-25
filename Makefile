@@ -45,7 +45,7 @@ destroy: ## 開発環境削除
 push:
 	git add .
 	git commit -m "Commit at $$(date +'%Y-%m-%d %H:%M:%S')"
-	git push origin main
+	git push origin $(git branch --show-current)
 
 # すべてのファイルの所有者を指定したユーザーに変更する
 # .env.dockerのUSER_NAMEが指定されている場合に実行
